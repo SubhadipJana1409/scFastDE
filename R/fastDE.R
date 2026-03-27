@@ -194,11 +194,14 @@ fastDE <- function(sce,
                  "Need at least ", n_params + 1L, " samples.")
 
         design <- model.matrix(~ 0 + cond_f + donor_f)
+        cond_levels <- make.names(cond_levels, unique = TRUE)
         colnames(design)[seq_along(cond_levels)] <- cond_levels
-        # Clean up donor column names
+        # Clean up donor column names — must be valid R names
         donor_cols <- seq(length(cond_levels) + 1L, ncol(design))
-        colnames(design)[donor_cols] <- sub("^donor_f", "",
-                                            colnames(design)[donor_cols])
+        colnames(design)[donor_cols] <- make.names(
+            sub("^donor_f", "", colnames(design)[donor_cols]),
+            unique = TRUE
+        )
     } else {
         # Unpaired: ~ 0 + condition (original approach)
         # Get condition per donor from original SCE data
