@@ -1,0 +1,223 @@
+library(testthat)
+library(SingleCellExperiment)
+library(scFastDE)
+
+# ── Helper: minimal 2-condition 6-donor SCE ───────────────────────────────────
+make_sce <- function(seed = 42, n_genes = 100, n_cells = 60) {
+    set.seed(seed)
+    counts <- matrix(rpois(n_genes * n_cells, 8L),
+                     nrow = n_genes, ncol = n_cells)
+    rownames(counts) <- paste0("Gene", seq_len(n_genes))
+    colnames(counts) <- paste0("Cell", seq_len(n_cells))
+    # Inject DE signal into first 10 genes for treatment
+    counts[1:10, 31:n_cells] <- counts[1:10, 31:n_cells] * 3L
+    sce <- SingleCellExperiment(assays = list(counts = counts))
+    sce$donor     <- rep(paste0("D", 1:6), each = 10)
+    sce$cell_type <- "Tcell"
+    sce$condition <- rep(c("ctrl", "treat"), each = 30)
+    sce
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
+# filterSparseDonors
+# ══════════════════════════════════════════════════════════════════════════════
+
+test_that("filterSparseDonors returns a SingleCellExperiment", {
+    sce <- make_sce()
+    res <- filterSparseDonors(sce, donor = "donor",
+                               cell_type = "cell_type", min_cells = 5)
+    expect_s4_class(res, "SingleCellExperiment")
+})
+
+test_that("filterSparseDonors removes donors below threshold", {
+    sce <- make_sce()
+    # All donors have 10 cells; require 15 to force removal
+    res <- filterSparseDonors(sce, donor = "donor",
+                               cell_type = "cell_type", min_cells = 15)
+    expect_lt(ncol(res), ncol(sce))
+})
+
+test_that("filterSparseDonors with action='flag' adds colData column", {
+    sce <- make_sce()
+    res <- filterSparseDonors(sce, donor = "donor",
+                               cell_type = "cell_type",
+                               min_cells = 15, action = "flag")
+    expect_true("scFastDE_sparse" %in% names(colData(res)))
+    expect_type(res$scFastDE_sparse, "logical")
+})
+
+test_that("filterSparseDonors errors on bad column name", {
+    sce <- make_sce()
+    expect_error(
+        filterSparseDonors(sce, donor = "nonexistent",
+                            cell_type = "cell_type"),
+        regexp = "not found in colData"
+    )
+})
+
+test_that("filterSparseDonors returns unchanged SCE when no sparse donors", {
+    sce <- make_sce()
+    res <- filterSparseDonors(sce, donor = "donor",
+                               cell_type = "cell_type", min_cells = 1)
+    expect_equal(ncol(res), ncol(sce))
+})
+
+# ══════════════════════════════════════════════════════════════════════════════
+# fastPseudobulk
+# ══════════════════════════════════════════════════════════════════════════════
+
+test_that("fastPseudobulk returns a list with correct elements", {
+    sce <- make_sce()
+    pb <- fastPseudobulk(sce, donor = "donor",
+                          cell_type = "cell_type", target_type = "Tcell")
+    expect_type(pb, "list")
+    expect_true(all(c("pseudobulk", "donor_weights",
+                       "donor_ncells") %in% names(pb)))
+})
+
+test_that("fastPseudobulk pseudobulk has correct dimensions", {
+    sce <- make_sce()
+    pb <- fastPseudobulk(sce, donor = "donor",
+                          cell_type = "cell_type", target_type = "Tcell")
+    expect_equal(nrow(pb$pseudobulk), nrow(sce))
+    expect_equal(ncol(pb$pseudobulk), length(unique(sce$donor)))
+})
+
+test_that("fastPseudobulk donor_weights are sqrt of cell counts", {
+    sce <- make_sce()
+    pb <- fastPseudobulk(sce, donor = "donor",
+                          cell_type = "cell_type", target_type = "Tcell")
+    expected <- sqrt(pb$donor_ncells)
+    expect_equal(pb$donor_weights, expected)
+})
+
+test_that("fastPseudobulk errors on invalid target_type", {
+    sce <- make_sce()
+    expect_error(
+        fastPseudobulk(sce, donor = "donor",
+                        cell_type = "cell_type", target_type = "NK"),
+        regexp = "not found"
+    )
+})
+
+test_that("fastPseudobulk errors when fewer than 2 donors", {
+    sce <- make_sce()
+    sce_1d <- sce[, sce$donor == "D1"]
+    expect_error(
+        fastPseudobulk(sce_1d, donor = "donor",
+                        cell_type = "cell_type", target_type = "Tcell"),
+        regexp = "At least 2 donors"
+    )
+})
+
+# ══════════════════════════════════════════════════════════════════════════════
+# fastDE
+# ══════════════════════════════════════════════════════════════════════════════
+
+test_that("fastDE returns a FDEResult", {
+    sce <- make_sce()
+    res <- fastDE(sce, donor = "donor", cell_type = "cell_type",
+                  condition = "condition", target_type = "Tcell",
+                  min_cells = 5)
+    expect_s4_class(res, "FDEResult")
+})
+
+test_that("fastDE deTable has expected columns", {
+    sce <- make_sce()
+    res <- fastDE(sce, donor = "donor", cell_type = "cell_type",
+                  condition = "condition", target_type = "Tcell",
+                  min_cells = 5)
+    expect_true(all(c("logFC", "P.Value", "adj.P.Val") %in%
+                    names(deTable(res))))
+})
+
+test_that("fastDE detects injected DE signal", {
+    sce <- make_sce(seed = 42)
+    res <- fastDE(sce, donor = "donor", cell_type = "cell_type",
+                  condition = "condition", target_type = "Tcell",
+                  min_cells = 5)
+    dt <- as.data.frame(deTable(res))
+    sig_genes <- rownames(dt)[dt$adj.P.Val < 0.05]
+    # At least some of the first 10 injected genes should be detected
+    detected <- intersect(sig_genes, paste0("Gene", 1:10))
+    expect_gt(length(detected), 0)
+})
+
+test_that("fastDE errors on non-SCE input", {
+    expect_error(
+        fastDE(list(), donor = "donor", cell_type = "cell_type",
+               condition = "condition", target_type = "Tcell"),
+        regexp = "SingleCellExperiment"
+    )
+})
+
+test_that("fastDE errors when condition has more than 2 levels", {
+    sce <- make_sce()
+    sce$condition <- rep(c("a", "b", "c"), length.out = ncol(sce))
+    expect_error(
+        fastDE(sce, donor = "donor", cell_type = "cell_type",
+               condition = "condition", target_type = "Tcell",
+               min_cells = 1),
+        regexp = "exactly 2 levels"
+    )
+})
+
+# ══════════════════════════════════════════════════════════════════════════════
+# plotDEResults
+# ══════════════════════════════════════════════════════════════════════════════
+
+test_that("plotDEResults returns a ggplot object", {
+    sce <- make_sce()
+    res <- fastDE(sce, donor = "donor", cell_type = "cell_type",
+                  condition = "condition", target_type = "Tcell",
+                  min_cells = 5)
+    p <- plotDEResults(res)
+    expect_s3_class(p, "ggplot")
+})
+
+test_that("plotDEResults errors on non-FDEResult input", {
+    expect_error(plotDEResults(list()), regexp = "FDEResult")
+})
+
+# ══════════════════════════════════════════════════════════════════════════════
+# FDEResult S4 class and accessors
+# ══════════════════════════════════════════════════════════════════════════════
+
+test_that("FDEResult constructor and accessors work", {
+    library(S4Vectors)
+    de <- DataFrame(
+        gene      = c("G1", "G2"),
+        logFC     = c(1.2, -0.5),
+        P.Value   = c(0.001, 0.5),
+        adj.P.Val = c(0.01, 0.8),
+        AveExpr   = c(3.1, 2.2),
+        t         = c(4.1, 0.8),
+        B         = c(2.1, -1.2)
+    )
+    pb <- matrix(rpois(20, 10), nrow = 2, ncol = 10)
+    rownames(pb) <- c("G1", "G2")
+    colnames(pb) <- paste0("D", 1:10)
+    wts <- setNames(sqrt(1:10), paste0("D", 1:10))
+
+    obj <- FDEResult(deTable = de, pseudobulk = pb,
+                     donorWeights = wts,
+                     params = list(cell_type = "Tcell"))
+
+    expect_s4_class(obj, "FDEResult")
+    expect_equal(nrow(deTable(obj)), 2)
+    expect_equal(dim(pseudobulk(obj)), c(2, 10))
+    expect_length(donorWeights(obj), 10)
+})
+
+test_that("show method for FDEResult prints without error", {
+    library(S4Vectors)
+    de <- DataFrame(
+        gene = "G1", logFC = 1.2, P.Value = 0.001,
+        adj.P.Val = 0.01, AveExpr = 3.1, t = 4.1, B = 2.1
+    )
+    pb <- matrix(rpois(10, 10), nrow = 1, ncol = 10)
+    rownames(pb) <- "G1"
+    colnames(pb) <- paste0("D", 1:10)
+    obj <- FDEResult(de, pb, setNames(sqrt(1:10), paste0("D", 1:10)))
+    expect_output(show(obj), "FDEResult")
+})
