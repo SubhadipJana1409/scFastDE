@@ -9,6 +9,7 @@ fastPseudobulk(
   donor = NULL,
   cell_type = NULL,
   target_type = NULL,
+  condition = NULL,
   assay_name = "counts"
 )
 }
@@ -25,43 +26,61 @@ object with raw counts in \code{assay(sce, "counts")}.}
 \item{target_type}{A \code{character(1)} specifying which cell type to
 aggregate. Must be a value present in \code{colData(sce)[[cell_type]]}.}
 
+\item{condition}{A \code{character(1)} naming the condition column in
+\code{colData(sce)}. When provided, aggregation is done per
+donor-condition pair (required for paired designs). Default:
+\code{NULL} (aggregate per donor only).}
+
 \item{assay_name}{A \code{character(1)} name of the assay to aggregate.
 Default: \code{"counts"}.}
 }
 \value{
-A \code{list} with two elements:
+A \code{list} with elements:
   \describe{
     \item{\code{pseudobulk}}{A \code{matrix} of aggregated counts,
-      rows = genes, columns = donors.}
-    \item{\code{donor_weights}}{A named \code{numeric} vector of
-      per-donor weights (\code{sqrt(n_cells)}).}
-    \item{\code{donor_ncells}}{A named \code{integer} vector giving
-      the raw cell count per donor.}
+      rows = genes, columns = samples.}
+    \item{\code{sample_weights}}{A named \code{numeric} vector of
+      per-sample weights (\code{sqrt(n_cells)}).}
+    \item{\code{sample_ncells}}{A named \code{integer} vector giving
+      the raw cell count per sample.}
+    \item{\code{sample_info}}{A \code{data.frame} with columns
+      \code{sample_id}, \code{donor}, and (if applicable)
+      \code{condition} — one row per pseudo-bulk sample.}
   }
+  For backward compatibility, \code{donor_weights} and
+  \code{donor_ncells} are also provided as aliases when
+  \code{condition} is \code{NULL}.
 }
 \description{
-Aggregates single-cell counts into pseudo-bulk profiles (one per donor)
-for a specified cell type, using vectorised sparse matrix operations.
-Each donor's profile is weighted by \code{sqrt(n_cells)}, giving more
-influence to donors with more cells while not completely discarding
-donors with fewer cells.
+Aggregates single-cell counts into pseudo-bulk profiles for a specified
+cell type, using vectorised sparse matrix operations.
+
+When \code{condition} is provided, aggregation is performed per
+donor-condition pair (one column per sample, e.g. \code{D1_ctrl},
+\code{D1_stim}). This is the correct approach for paired experimental
+designs where the same donors contribute cells under multiple conditions.
+
+When \code{condition} is \code{NULL} (default), aggregation is performed
+per donor only (backward-compatible behaviour for unpaired designs).
+
+Each sample's weight equals \code{sqrt(n_cells)}, giving more influence
+to well-represented samples while not discarding those with fewer cells.
 }
 \details{
 Pseudo-bulk aggregation sums the raw counts for all cells belonging to
-each donor within a given cell type:
+each donor (or donor-condition pair) within a given cell type:
 
-\deqn{PB_{g,d} = \sum_{c \in \text{donor}_d, \text{type}_t} X_{g,c}}
+\deqn{PB_{g,s} = \sum_{c \in \text{sample}_s, \text{type}_t} X_{g,c}}
 
-Donor weights are then computed as:
+Sample weights are then computed as:
 
-\deqn{w_d = \sqrt{n_{d,t}}}
+\deqn{w_s = \sqrt{n_{s,t}}}
 
-where \eqn{n_{d,t}} is the number of cells for donor \eqn{d} in cell
-type \eqn{t}. These weights are passed to \code{\link{fastDE}} for use
-in the weighted linear model.
+where \eqn{n_{s,t}} is the number of cells for sample \eqn{s} in cell
+type \eqn{t}.
 
-The aggregation uses sparse matrix column-sums grouped by donor,
-avoiding a slow R-level loop over donors.
+The aggregation uses sparse matrix column-sums grouped by sample,
+avoiding a slow R-level loop.
 }
 \examples{
 library(SingleCellExperiment)
@@ -73,13 +92,21 @@ colnames(counts) <- paste0("Cell", seq_len(60))
 sce <- SingleCellExperiment(assays = list(counts = counts))
 sce$donor     <- rep(paste0("D", 1:6), each = 10)
 sce$cell_type <- "Tcell"
-sce$condition <- rep(c("ctrl", "treat"), times = 30)
+sce$condition <- rep(c("ctrl", "treat"), each = 30)
 
+# Unpaired (aggregate by donor only)
 pb <- fastPseudobulk(sce, donor = "donor",
                       cell_type = "cell_type",
                       target_type = "Tcell")
 dim(pb$pseudobulk)
-pb$donor_weights
+
+# Paired (aggregate by donor x condition)
+pb2 <- fastPseudobulk(sce, donor = "donor",
+                       cell_type = "cell_type",
+                       target_type = "Tcell",
+                       condition = "condition")
+dim(pb2$pseudobulk)
+pb2$sample_info
 
 }
 \seealso{

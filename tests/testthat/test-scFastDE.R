@@ -221,3 +221,81 @@ test_that("show method for FDEResult prints without error", {
     obj <- FDEResult(de, pb, setNames(sqrt(1:10), paste0("D", 1:10)))
     expect_output(show(obj), "FDEResult")
 })
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Paired design support
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Helper: paired SCE where SAME donors appear in BOTH conditions
+make_paired_sce <- function(seed = 99, n_genes = 100, n_donors = 6,
+                            cells_per_donor_cond = 10) {
+    set.seed(seed)
+    n_cells <- n_donors * 2 * cells_per_donor_cond
+    counts <- matrix(rpois(n_genes * n_cells, 8L),
+                     nrow = n_genes, ncol = n_cells)
+    rownames(counts) <- paste0("Gene", seq_len(n_genes))
+    colnames(counts) <- paste0("Cell", seq_len(n_cells))
+
+    # Inject DE signal: first 15 genes upregulated in "treat"
+    treat_cols <- seq(n_donors * cells_per_donor_cond + 1, n_cells)
+    counts[1:15, treat_cols] <- counts[1:15, treat_cols] * 4L
+
+    sce <- SingleCellExperiment(assays = list(counts = counts))
+    # Same donors in both conditions
+    sce$donor     <- rep(rep(paste0("D", seq_len(n_donors)),
+                            each = cells_per_donor_cond), 2)
+    sce$cell_type <- "Tcell"
+    sce$condition <- rep(c("ctrl", "treat"),
+                         each = n_donors * cells_per_donor_cond)
+    sce
+}
+
+test_that("fastPseudobulk with condition creates donor x cond samples", {
+    sce <- make_paired_sce()
+    pb <- fastPseudobulk(sce, donor = "donor",
+                          cell_type = "cell_type",
+                          target_type = "Tcell",
+                          condition = "condition")
+    # 6 donors x 2 conditions = 12 samples
+    expect_equal(ncol(pb$pseudobulk), 12)
+    expect_true("sample_info" %in% names(pb))
+    expect_equal(nrow(pb$sample_info), 12)
+    expect_true(all(c("donor", "condition") %in% names(pb$sample_info)))
+})
+
+test_that("fastDE detects paired design automatically", {
+    sce <- make_paired_sce()
+    res <- fastDE(sce, donor = "donor", cell_type = "cell_type",
+                  condition = "condition", target_type = "Tcell",
+                  min_cells = 5)
+    expect_s4_class(res, "FDEResult")
+    expect_true(res@params$is_paired)
+    # Should produce 12 samples (6 donors x 2 conditions)
+    expect_equal(ncol(pseudobulk(res)), 12)
+})
+
+test_that("fastDE detects injected DE signal in paired design", {
+    sce <- make_paired_sce(seed = 42)
+    res <- fastDE(sce, donor = "donor", cell_type = "cell_type",
+                  condition = "condition", target_type = "Tcell",
+                  min_cells = 5)
+    dt <- as.data.frame(deTable(res))
+    sig_genes <- rownames(dt)[dt$adj.P.Val < 0.05]
+    # At least some of the 15 injected DE genes should be detected
+    detected <- intersect(sig_genes, paste0("Gene", 1:15))
+    expect_gt(length(detected), 0)
+})
+
+test_that("unpaired design still works after paired fix", {
+    sce <- make_sce()
+    res <- fastDE(sce, donor = "donor", cell_type = "cell_type",
+                  condition = "condition", target_type = "Tcell",
+                  min_cells = 5)
+    expect_s4_class(res, "FDEResult")
+    expect_false(res@params$is_paired)
+    dt <- as.data.frame(deTable(res))
+    sig_genes <- rownames(dt)[dt$adj.P.Val < 0.05]
+    detected <- intersect(sig_genes, paste0("Gene", 1:10))
+    expect_gt(length(detected), 0)
+})
+

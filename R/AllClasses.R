@@ -152,14 +152,17 @@ setGeneric("donorWeights", function(x, ...) standardGeneric("donorWeights"))
 #' @export
 setMethod("show", "FDEResult", function(object) {
     sig <- sum(object@deTable[["adj.P.Val"]] < 0.05, na.rm = TRUE)
+    is_paired <- isTRUE(object@params$is_paired)
     cat("FDEResult\n")
     cat("  Genes tested   :", nrow(object@deTable), "\n")
-    cat("  Donors         :", ncol(object@pseudobulk), "\n")
+    cat("  Samples        :", ncol(object@pseudobulk), "\n")
     cat("  Significant    :", sig, "(adj.P.Val < 0.05)\n")
     if (!is.null(object@params$cell_type))
         cat("  Cell type      :", object@params$cell_type, "\n")
     if (!is.null(object@params$condition))
         cat("  Condition      :", object@params$condition, "\n")
+    cat("  Design         :", if (is_paired) "paired" else "unpaired",
+        "\n")
     invisible(object)
 })
 

@@ -48,6 +48,7 @@
 #'   scale_color_manual labs theme_bw theme element_text element_blank
 #'   element_rect element_line geom_text
 #' @importFrom methods is
+#' @importFrom utils head
 #' @export
 plotDEResults <- function(result,
                            fdr_thresh  = 0.05,

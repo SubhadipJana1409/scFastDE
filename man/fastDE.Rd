@@ -41,7 +41,7 @@ second level minus the first level is used. Default: \code{NULL}.}
 \item{min_cpm}{A \code{numeric(1)} minimum CPM for a gene to be
 considered expressed. Default: \code{1}.}
 
-\item{min_donors}{An \code{integer(1)} minimum number of donors in
+\item{min_donors}{An \code{integer(1)} minimum number of samples in
 which a gene must exceed \code{min_cpm}. Default: \code{2}.}
 
 \item{min_cells}{An \code{integer(1)} minimum cells per donor before
@@ -58,9 +58,11 @@ A \code{\link{FDEResult}} object containing:
       \code{AveExpr}, \code{t}, \code{P.Value}, \code{adj.P.Val},
       \code{B}).
     \item \code{pseudobulk}: the aggregated count matrix.
-    \item \code{donorWeights}: the per-donor \code{sqrt(n_cells)}
+    \item \code{donorWeights}: the per-sample \code{sqrt(n_cells)}
       weights.
-    \item \code{params}: the analysis parameters.
+    \item \code{params}: the analysis parameters including
+      \code{is_paired} which indicates whether a paired design was
+      detected.
   }
 }
 \description{
@@ -68,24 +70,31 @@ Runs differential expression analysis across all genes simultaneously
 using a weighted limma-voom linear model. Unlike tools that loop over
 genes serially, \code{fastDE} passes the entire pseudo-bulk matrix to
 limma, which uses LAPACK routines to fit all gene models in one
-vectorised call. Donor weights from \code{\link{fastPseudobulk}} are
-incorporated directly into the linear model via \code{limma::lmFit}.
+vectorised call.
+
+The function automatically detects whether the experimental design is
+\strong{paired} (same donors in multiple conditions) or
+\strong{unpaired} (each donor in one condition only) and builds the
+appropriate linear model:
+\itemize{
+  \item \strong{Paired:} pseudo-bulk is aggregated per donor-condition
+    pair, and a \code{~ 0 + condition + donor} model accounts for
+    donor-level variation.
+  \item \strong{Unpaired:} pseudo-bulk is aggregated per donor, and a
+    \code{~ 0 + condition} model is used.
+}
 }
 \details{
 The analysis pipeline is:
 \enumerate{
   \item Filter lowly-expressed genes (CPM > \code{min_cpm} in at least
-    \code{min_donors} donors).
-  \item Apply \code{limma::voom} with donor cell-count weights.
-  \item Fit a weighted linear model: \code{~ 0 + condition}.
+    \code{min_donors} samples).
+  \item Apply \code{limma::voom} with sample cell-count weights.
+  \item Fit a weighted linear model with the appropriate design.
   \item Extract the contrast of interest with \code{limma::makeContrasts}.
   \item Apply empirical Bayes moderation with \code{limma::eBayes}.
   \item Return all results as a \code{\link{FDEResult}} object.
 }
-
-The weighting scheme means donors with more cells have proportionally
-more influence on the log-fold change estimate, while donors with few
-cells still contribute rather than being discarded.
 }
 \examples{
 library(SingleCellExperiment)
