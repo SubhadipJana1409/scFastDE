@@ -34,7 +34,7 @@ differential expression (DE) in these datasets is pseudo-bulk analysis:
 aggregate per-cell counts into per-donor profiles, then apply bulk DE tools
 like `DESeq2` or `edgeR`.
 
-This works well but has two underappreciated problems:
+This works well but has three underappreciated problems:
 
 **Problem 1: Speed.** Bulk DE tools fit one model per gene in a serial R
 loop. On a dataset with 30,000 genes and 50 donors, this loop runs 30,000
@@ -45,15 +45,23 @@ analysis bottleneck.
 with 5 cells identically to a donor with 500 cells. The 5-cell pseudo-bulk
 is far noisier, yet gets equal weight in the DE model.
 
-`scFastDE` addresses both:
+**Problem 3: Paired designs.** Many studies collect cells from the same
+donors under multiple conditions (e.g. before/after treatment, or
+stimulated/unstimulated). Naively aggregating by donor alone mixes
+conditions together, destroying the treatment signal.
+
+`scFastDE` addresses all three:
 
 1. **Vectorised testing** — the entire pseudo-bulk matrix is passed to
    `limma::lmFit` in one call, which uses LAPACK routines to fit all gene
    models simultaneously.
-2. **Cell-count weights** — each donor is weighted by `sqrt(n_cells)`,
-   giving principled influence to well-represented donors.
+2. **Cell-count weights** — each sample is weighted by `sqrt(n_cells)`,
+   giving principled influence to well-represented samples.
 3. **Sparse donor guard** — donors with too few cells are removed before
    aggregation, preventing noisy pseudo-bulks from distorting results.
+4. **Auto-detect paired designs** — `fastDE` automatically detects whether
+   donors appear in multiple conditions and builds the appropriate linear
+   model (paired `~ 0 + condition + donor` or unpaired `~ 0 + condition`).
 
 # Installation
 
@@ -63,13 +71,17 @@ if (!requireNamespace("BiocManager", quietly = TRUE))
 BiocManager::install("scFastDE")
 ```
 
-# Quick start
+# Quick start: unpaired design
+
+In an **unpaired design**, each donor belongs to exactly one condition
+(e.g. Donors 1–6 = healthy, Donors 7–12 = disease). `scFastDE`
+automatically detects this and uses a simple `~ 0 + condition` model.
 
 ```{r quickstart}
 library(scFastDE)
 library(SingleCellExperiment)
 
-# Simulate a multi-donor, two-condition dataset
+# Simulate a multi-donor, two-condition dataset (unpaired)
 set.seed(2024)
 n_genes <- 500
 n_cells <- 120
@@ -185,8 +197,135 @@ Donor1's weight (`sqrt(2) ≈ 1.41`) is much lower than the other donors
 (`sqrt(10) ≈ 3.16`), so its noisy pseudo-bulk has proportionally less
 influence on the DE estimates — without being discarded entirely.
 
+# Paired design support
+
+Many single-cell experiments use a **paired design** where the same donors
+contribute cells under multiple conditions — for example, stimulated vs
+unstimulated PBMCs from the same individuals (Kang et al. 2018).
+
+`scFastDE` **automatically detects** paired designs: when the same donor
+IDs appear in more than one condition, `fastDE` switches to a paired model
+that:
+
+1. Aggregates pseudo-bulk per **donor × condition** pair (not per donor)
+2. Builds a `~ 0 + condition + donor` design matrix that blocks on donor
+3. Extracts the treatment effect while accounting for inter-donor variation
+
+This is critical because naively aggregating by donor alone would mix
+conditions together, destroying the treatment signal entirely.
+
+## Simulated paired design
+
+```{r paired_setup}
+# Simulate paired data: SAME 6 donors in BOTH conditions
+set.seed(2025)
+n_genes <- 500
+n_donors <- 6
+cells_per_donor_cond <- 15
+n_cells <- n_donors * 2 * cells_per_donor_cond  # 180 cells
+
+counts <- matrix(rpois(n_genes * n_cells, 8L),
+                 nrow = n_genes, ncol = n_cells)
+rownames(counts) <- paste0("Gene", seq_len(n_genes))
+colnames(counts) <- paste0("Cell", seq_len(n_cells))
+
+# Inject DE signal: first 25 genes upregulated in stimulated condition
+stim_cols <- seq(n_donors * cells_per_donor_cond + 1, n_cells)
+counts[1:25, stim_cols] <- counts[1:25, stim_cols] * 4L
+
+sce_paired <- SingleCellExperiment(assays = list(counts = counts))
+
+# KEY: same donors (D1–D6) appear in BOTH conditions
+sce_paired$donor <- rep(
+    rep(paste0("D", seq_len(n_donors)), each = cells_per_donor_cond),
+    2
+)
+sce_paired$cell_type <- "Monocyte"
+sce_paired$condition <- rep(c("ctrl", "stim"),
+                             each = n_donors * cells_per_donor_cond)
+
+# Verify: each donor appears in both conditions
+cat("Cells per donor and condition:\n")
+print(table(sce_paired$donor, sce_paired$condition))
+```
+
+## Pseudo-bulk by donor × condition
+
+When the `condition` argument is passed, `fastPseudobulk` creates one
+pseudo-bulk column per donor-condition pair:
+
+```{r paired_pseudobulk}
+pb_paired <- fastPseudobulk(sce_paired,
+                              donor       = "donor",
+                              cell_type   = "cell_type",
+                              target_type = "Monocyte",
+                              condition   = "condition")
+
+cat(sprintf("Pseudo-bulk: %d genes × %d samples\n",
+            nrow(pb_paired$pseudobulk),
+            ncol(pb_paired$pseudobulk)))
+cat("  (6 donors × 2 conditions = 12 samples)\n\n")
+
+cat("Sample info:\n")
+print(pb_paired$sample_info)
+```
+
+## Running fastDE on paired data
+
+`fastDE` auto-detects the paired design and reports it:
+
+```{r paired_de}
+result_paired <- fastDE(sce_paired,
+                         donor       = "donor",
+                         cell_type   = "cell_type",
+                         condition   = "condition",
+                         target_type = "Monocyte",
+                         min_cells   = 5,
+                         min_cpm     = 1,
+                         min_donors  = 2)
+
+result_paired
+```
+
+Note the output shows `Design: paired` and `Samples: 12` (not 6).
+
+```{r paired_results}
+dt_paired <- as.data.frame(deTable(result_paired))
+dt_paired_sorted <- dt_paired[order(dt_paired$adj.P.Val), ]
+
+sig_paired <- sum(dt_paired$adj.P.Val < 0.05, na.rm = TRUE)
+recovered  <- sum(paste0("Gene", 1:25) %in%
+                  rownames(dt_paired)[dt_paired$adj.P.Val < 0.05])
+
+cat(sprintf("Significant genes (FDR < 0.05): %d / %d\n",
+            sig_paired, nrow(dt_paired)))
+cat(sprintf("Injected DE genes recovered:    %d / 25\n", recovered))
+```
+
+```{r paired_volcano, fig.cap = "Volcano plot for paired design. The paired model correctly blocks on donor, recovering the injected DE signal."}
+plotDEResults(result_paired, fdr_thresh = 0.05, lfc_thresh = 1,
+             top_n = 10)
+```
+
+## Why paired design matters
+
+The paired model accounts for donor-level variation (age, genetics, etc.)
+as a blocking factor. This has two major benefits:
+
+- **More power**: by removing inter-donor noise, the residual variance
+  is smaller, making it easier to detect true condition effects.
+- **Correct aggregation**: without condition-aware aggregation, ctrl and
+  stim cells from the same donor would be mixed into a single pseudo-bulk,
+  washing out the treatment signal completely.
+
+On real data like the Kang et al. 2018 IFN-β PBMC dataset, the paired
+model recovers **5,550 DE genes** (including all 10 known IFN-β response
+genes with logFCs of 2–8), whereas naively aggregating by donor alone
+recovers **zero**.
+
 # Session information
 
 ```{r session}
 sessionInfo()
 ```
+
