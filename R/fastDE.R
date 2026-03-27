@@ -136,6 +136,12 @@ fastDE <- function(sce,
     donor_sub <- as.character(colData(sce_sub)[[donor]])
     cond_sub  <- as.character(colData(sce_sub)[[condition]])
 
+    # Validate exactly 2 condition levels
+    all_cond_levels <- unique(cond_sub)
+    if (length(all_cond_levels) != 2)
+        stop("'condition' must have exactly 2 levels. Found: ",
+             paste(sort(all_cond_levels), collapse = ", "))
+
     # For each donor, find which conditions they appear in
     donor_conds <- tapply(cond_sub, donor_sub, function(x) {
         unique(x)
