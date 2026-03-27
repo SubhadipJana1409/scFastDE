@@ -10,10 +10,11 @@
 for multi-donor single-cell RNA-seq experiments.
 
 Standard pseudo-bulk DE tools (DESeq2, edgeR, muscat) loop over genes serially
-and treat all donors equally regardless of cell count. scFastDE fixes both:
+and treat all donors equally regardless of cell count. scFastDE fixes this:
 
 - **10-50x faster** — all genes tested simultaneously via vectorised matrix ops
-- **Statistically principled** — donors weighted by `sqrt(n_cells)`
+- **Statistically principled** — samples weighted by `sqrt(n_cells)`
+- **Paired design auto-detection** — same donors in multiple conditions? Automatically handled with a blocking model
 - **Rare cell type aware** — sparse donor guard before aggregation
 - **Bioc-native** — `SingleCellExperiment` in, `FDEResult` S4 out
 
@@ -54,8 +55,8 @@ plotDEResults(result)
 | Function | Description |
 |---|---|
 | `filterSparseDonors()` | Remove donors below min cell threshold |
-| `fastPseudobulk()` | Vectorised weighted pseudo-bulk aggregation |
-| `fastDE()` | Fast vectorised limma-voom DE with donor weights |
+| `fastPseudobulk()` | Vectorised weighted pseudo-bulk aggregation (per-donor or per-donor × condition) |
+| `fastDE()` | Fast vectorised limma-voom DE with auto-detected paired/unpaired design |
 | `plotDEResults()` | Volcano plot with significance colouring |
 
 ## Citation

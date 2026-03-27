@@ -13,9 +13,12 @@ Description:
     operations across all genes simultaneously, achieving 10-50x speed gains on
     large datasets. Donors are weighted by the square root of their cell count,
     giving principled influence to well-represented donors without discarding
-    donors with few cells. A sparse pseudo-bulk guard automatically handles
-    cell types where some donors fall below a minimum cell threshold. All
-    functions operate natively on SingleCellExperiment objects.
+    donors with few cells. Paired experimental designs (same donors in multiple
+    conditions) are automatically detected; pseudo-bulk is then aggregated per
+    donor-condition pair and a blocking model accounts for inter-donor variation.
+    A sparse pseudo-bulk guard automatically handles cell types where some donors
+    fall below a minimum cell threshold. All functions operate natively on
+    SingleCellExperiment objects.
 License: MIT + file LICENSE
 URL: https://github.com/SubhadipJana1409/scFastDE
 BugReports: https://github.com/SubhadipJana1409/scFastDE/issues
