@@ -1,7 +1,7 @@
 # scFastDE
 
 [![Bioconductor devel](https://img.shields.io/badge/Bioconductor-devel-blue)](https://bioconductor.org/packages/devel/bioc/html/scFastDE.html)
-[![R CMD check](https://github.com/YOURUSERNAME/scFastDE/actions/workflows/bioc-check.yml/badge.svg)](https://github.com/YOURUSERNAME/scFastDE/actions)
+[![R CMD check](https://github.com/SubhadipJana1409/scFastDE/actions/workflows/bioc-check.yml/badge.svg)](https://github.com/SubhadipJana1409/scFastDE/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Overview
@@ -23,7 +23,7 @@ and treat all donors equally regardless of cell count. scFastDE fixes both:
 BiocManager::install("scFastDE")
 
 # Development version
-BiocManager::install("YOURUSERNAME/scFastDE")
+BiocManager::install("SubhadipJana1409/scFastDE")
 ```
 
 ## Quick start
@@ -60,9 +60,9 @@ plotDEResults(result)
 
 ## Citation
 
-> Your Name (2025). scFastDE: Fast Donor-Weighted Pseudo-Bulk DE for scRNA-seq.
+> Subhadip Jana (2025). scFastDE: Fast Donor-Weighted Pseudo-Bulk DE for scRNA-seq.
 > R package version 0.99.0.
 
 ## License
 
-MIT © Your Name
+MIT © Subhadip Jana

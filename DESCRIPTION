@@ -3,9 +3,9 @@ Type: Package
 Title: Fast Donor-Weighted Pseudo-Bulk Differential Expression for scRNA-seq
 Version: 0.99.0
 Authors@R: c(
-    person("Your", "Name", role = c("aut", "cre"),
-           email = "your@email.com",
-           comment = c(ORCID = "0000-0000-0000-0000")))
+    person("Subhadip", "Jana", role = c("aut", "cre"),
+           email = "subhadipjana1409@gmail.com",
+           comment = c(ORCID = "0009-0003-7860-2853")))
 Description:
     scFastDE provides fast, donor-weighted pseudo-bulk differential expression
     analysis for multi-donor single-cell RNA-seq experiments. Unlike existing
@@ -17,8 +17,8 @@ Description:
     cell types where some donors fall below a minimum cell threshold. All
     functions operate natively on SingleCellExperiment objects.
 License: MIT + file LICENSE
-URL: https://github.com/yourusername/scFastDE
-BugReports: https://github.com/yourusername/scFastDE/issues
+URL: https://github.com/SubhadipJana1409/scFastDE
+BugReports: https://github.com/SubhadipJana1409/scFastDE/issues
 biocViews: SingleCell, DifferentialExpression, StatisticalMethod,
            Transcriptomics, GeneExpression, Sequencing,
            CellBasedAssays, WorkflowStep

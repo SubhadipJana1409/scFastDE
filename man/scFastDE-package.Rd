@@ -46,12 +46,12 @@ data. \emph{Nature Communications}, 11, 6077.
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://github.com/yourusername/scFastDE}
-  \item Report bugs at \url{https://github.com/yourusername/scFastDE/issues}
+  \item \url{https://github.com/SubhadipJana1409/scFastDE}
+  \item Report bugs at \url{https://github.com/SubhadipJana1409/scFastDE/issues}
 }
 
 }
 \author{
-\strong{Maintainer}: Your Name \email{your@email.com} (\href{https://orcid.org/0000-0000-0000-0000}{ORCID})
+\strong{Maintainer}: Subhadip Jana \email{subhadipjana1409@gmail.com} (\href{https://orcid.org/0009-0003-7860-2853}{ORCID})
 
 }

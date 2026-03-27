@@ -1,9 +1,8 @@
 ---
 title: "Fast donor-weighted DE for multi-donor scRNA-seq with scFastDE"
 author:
-  - name: "Your Name"
-    affiliation: "Your Institution"
-    email: "your@email.com"
+  - name: "Subhadip Jana"
+    email: "subhadipjana1409@gmail.com"
 date: "`r Sys.Date()`"
 output:
   BiocStyle::html_document:
