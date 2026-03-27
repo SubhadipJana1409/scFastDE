@@ -1,0 +1,193 @@
+---
+title: "Fast donor-weighted DE for multi-donor scRNA-seq with scFastDE"
+author:
+  - name: "Your Name"
+    affiliation: "Your Institution"
+    email: "your@email.com"
+date: "`r Sys.Date()`"
+output:
+  BiocStyle::html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+vignette: >
+  %\VignetteIndexEntry{Fast donor-weighted DE for multi-donor scRNA-seq with scFastDE}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+    collapse  = TRUE,
+    comment   = "#>",
+    fig.width = 7,
+    fig.height = 5,
+    message   = FALSE,
+    warning   = FALSE
+)
+```
+
+# Introduction
+
+Multi-donor single-cell RNA-seq studies are now the norm for disease studies,
+clinical trials, and population-level atlases. The standard approach to
+differential expression (DE) in these datasets is pseudo-bulk analysis:
+aggregate per-cell counts into per-donor profiles, then apply bulk DE tools
+like `DESeq2` or `edgeR`.
+
+This works well but has two underappreciated problems:
+
+**Problem 1: Speed.** Bulk DE tools fit one model per gene in a serial R
+loop. On a dataset with 30,000 genes and 50 donors, this loop runs 30,000
+times. At scale — 100k+ cells, multiple cell types — this becomes the
+analysis bottleneck.
+
+**Problem 2: Donor weighting.** Standard pseudo-bulk tools treat a donor
+with 5 cells identically to a donor with 500 cells. The 5-cell pseudo-bulk
+is far noisier, yet gets equal weight in the DE model.
+
+`scFastDE` addresses both:
+
+1. **Vectorised testing** — the entire pseudo-bulk matrix is passed to
+   `limma::lmFit` in one call, which uses LAPACK routines to fit all gene
+   models simultaneously.
+2. **Cell-count weights** — each donor is weighted by `sqrt(n_cells)`,
+   giving principled influence to well-represented donors.
+3. **Sparse donor guard** — donors with too few cells are removed before
+   aggregation, preventing noisy pseudo-bulks from distorting results.
+
+# Installation
+
+```{r install, eval = FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install("scFastDE")
+```
+
+# Quick start
+
+```{r quickstart}
+library(scFastDE)
+library(SingleCellExperiment)
+
+# Simulate a multi-donor, two-condition dataset
+set.seed(2024)
+n_genes <- 500
+n_cells <- 120
+
+counts <- matrix(rpois(n_genes * n_cells, 8L),
+                 nrow = n_genes, ncol = n_cells)
+rownames(counts) <- paste0("Gene", seq_len(n_genes))
+colnames(counts) <- paste0("Cell", seq_len(n_cells))
+
+# Inject DE signal: first 20 genes upregulated in treatment
+counts[1:20, 61:120] <- counts[1:20, 61:120] * 4L
+
+sce <- SingleCellExperiment(assays = list(counts = counts))
+sce$donor     <- rep(paste0("Donor", 1:12), each = 10)
+sce$cell_type <- "CD4_Tcell"
+sce$condition <- rep(c("ctrl", "treat"), each = 60)
+
+sce
+```
+
+# Step 1: Filter sparse donors
+
+Before aggregation, remove donor-cell type combinations with too few cells.
+
+```{r filter}
+sce <- filterSparseDonors(sce,
+                           donor     = "donor",
+                           cell_type = "cell_type",
+                           min_cells = 5)
+ncol(sce)
+```
+
+# Step 2: Inspect pseudo-bulk profiles
+
+```{r pseudobulk}
+pb <- fastPseudobulk(sce,
+                      donor       = "donor",
+                      cell_type   = "cell_type",
+                      target_type = "CD4_Tcell")
+
+cat("Pseudo-bulk matrix:", nrow(pb$pseudobulk),
+    "genes x", ncol(pb$pseudobulk), "donors\n")
+
+cat("\nDonor weights (sqrt of cell count):\n")
+print(round(pb$donor_weights, 2))
+```
+
+Notice that all donors have equal cell counts here (10 each), so weights
+are identical. In real data, weights will vary substantially.
+
+# Step 3: Run differential expression
+
+```{r fastde}
+result <- fastDE(sce,
+                  donor       = "donor",
+                  cell_type   = "cell_type",
+                  condition   = "condition",
+                  target_type = "CD4_Tcell",
+                  min_cells   = 5,
+                  min_cpm     = 1,
+                  min_donors  = 2)
+
+result
+```
+
+```{r de_results}
+# Top significant genes
+dt <- as.data.frame(deTable(result))
+dt_sorted <- dt[order(dt$adj.P.Val), ]
+head(dt_sorted[, c("gene", "logFC", "P.Value", "adj.P.Val")], 15)
+```
+
+```{r de_summary}
+# Summary
+sig <- sum(dt$adj.P.Val < 0.05, na.rm = TRUE)
+cat(sprintf("\n%d / %d genes significant (FDR < 0.05)\n",
+            sig, nrow(dt)))
+cat(sprintf("Injected genes recovered: %d / 20\n",
+            sum(paste0("Gene", 1:20) %in%
+                rownames(dt)[dt$adj.P.Val < 0.05])))
+```
+
+# Step 4: Visualise results
+
+```{r volcano, fig.cap = "Volcano plot of DE results. Red = upregulated, blue = downregulated at FDR < 0.05 and |logFC| > 1."}
+plotDEResults(result, fdr_thresh = 0.05, lfc_thresh = 1, top_n = 10)
+```
+
+# The donor weighting advantage
+
+Here we demonstrate why weighting matters. We compare `fastDE` output
+when one donor has far fewer cells than the others.
+
+```{r weighting_demo}
+# Create an unbalanced dataset
+set.seed(99)
+sce_unbal <- sce
+# Simulate donor 1 having only 2 cells by keeping just 2
+keep <- c(which(sce$donor != "Donor1"),
+          which(sce$donor == "Donor1")[1:2])
+sce_unbal <- sce_unbal[, keep]
+
+pb_unbal <- fastPseudobulk(sce_unbal,
+                             donor       = "donor",
+                             cell_type   = "cell_type",
+                             target_type = "CD4_Tcell")
+
+cat("Donor weights (unbalanced):\n")
+print(round(pb_unbal$donor_weights, 2))
+```
+
+Donor1's weight (`sqrt(2) ≈ 1.41`) is much lower than the other donors
+(`sqrt(10) ≈ 3.16`), so its noisy pseudo-bulk has proportionally less
+influence on the DE estimates — without being discarded entirely.
+
+# Session information
+
+```{r session}
+sessionInfo()
+```
