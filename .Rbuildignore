@@ -1,0 +1,7 @@
+^\.github$
+^.*\.Rproj$
+^.*\.ps1$
+^LICENSE\.md$
+^\.Rbuildignore$
+^scFastDE\.BiocCheck$
+^README\.md$
