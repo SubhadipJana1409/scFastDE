@@ -195,8 +195,10 @@ fastDE <- function(sce,
                                             colnames(design)[donor_cols])
     } else {
         # Unpaired: ~ 0 + condition (original approach)
-        donor_condition <- setNames(sample_info$condition,
-                                    sample_info$donor)
+        # Get condition per donor from original SCE data
+        donor_condition <- tapply(cond_sub, donor_sub, function(x) {
+            names(sort(table(x), decreasing = TRUE))[1]
+        })
         donor_condition <- donor_condition[colnames(pb_mat)]
 
         cond_levels <- sort(unique(donor_condition))
@@ -208,12 +210,6 @@ fastDE <- function(sce,
         design <- model.matrix(~ 0 + cond_f)
         colnames(design) <- cond_levels
     }
-
-    # Validate condition levels
-    cond_levels <- sort(unique(sample_info$condition))
-    if (length(cond_levels) != 2)
-        stop("'condition' must have exactly 2 levels. Found: ",
-             paste(cond_levels, collapse = ", "))
 
     # ── Step 5: filter lowly expressed genes ─────────────────────────────────
     lib_sizes <- colSums(pb_mat)

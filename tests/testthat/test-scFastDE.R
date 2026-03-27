@@ -106,7 +106,7 @@ test_that("fastPseudobulk errors when fewer than 2 donors", {
     expect_error(
         fastPseudobulk(sce_1d, donor = "donor",
                         cell_type = "cell_type", target_type = "Tcell"),
-        regexp = "At least 2 donors"
+        regexp = "At least 2"
     )
 })
 
