@@ -37,6 +37,18 @@ jobs:
       - name: Install R dependencies
         run: |
           install.packages("remotes")
+
+          # Install ggplot2 + rlang explicitly (these keep failing)
+          cat("=== Installing rlang ===\n")
+          install.packages("rlang",
+                           repos = "https://cloud.r-project.org",
+                           verbose = TRUE)
+          cat("=== Installing ggplot2 ===\n")
+          install.packages("ggplot2",
+                           repos = "https://cloud.r-project.org",
+                           verbose = TRUE)
+
+          # Install remaining deps
           remotes::install_deps(
               dependencies = TRUE,
               repos        = BiocManager::repositories(),
