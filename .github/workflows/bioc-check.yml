@@ -37,6 +37,9 @@ jobs:
           cat("Repos:\n")
           print(getOption("repos"))
 
+          # Install remotes first
+          install.packages("remotes", repos = "https://cloud.r-project.org")
+
           # Install all Imports + Suggests via BiocManager
           deps <- remotes::dev_package_deps(dependencies = TRUE)
           pkgs <- deps$package[!deps$is_base]
