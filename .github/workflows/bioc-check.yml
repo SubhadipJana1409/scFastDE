@@ -27,24 +27,22 @@ jobs:
             libssl-dev \
             libxml2-dev
 
+      - name: Set CRAN repo globally
+        run: |
+          echo 'options(repos = c(CRAN = "https://cloud.r-project.org"))' >> /usr/local/lib/R/etc/Rprofile.site
+
       - name: Install R dependencies
         run: |
-          # Ensure CRAN + Bioc repos are both set
-          options(repos = c(
-            CRAN = "https://cloud.r-project.org",
-            BiocManager::repositories()
-          ))
-          cat("Repos:\n")
-          print(getOption("repos"))
-
-          # Install remotes first
-          install.packages("remotes", repos = "https://cloud.r-project.org")
-
-          # Install all Imports + Suggests
+          options(repos = c(CRAN = "https://cloud.r-project.org",
+                            BiocManager::repositories()))
+          install.packages("remotes")
           remotes::install_deps(dependencies = TRUE, Ncpus = 2L)
-
-          # Install BiocCheck
           BiocManager::install("BiocCheck", update = FALSE, ask = FALSE)
+
+          # Verify critical deps
+          stopifnot(requireNamespace("ggplot2", quietly = TRUE))
+          stopifnot(requireNamespace("rlang", quietly = TRUE))
+          cat("All dependencies installed successfully.\n")
         shell: Rscript {0}
 
       - name: Build package
