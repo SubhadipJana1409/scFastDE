@@ -60,9 +60,7 @@ A \code{\link{FDEResult}} object containing:
     \item \code{pseudobulk}: the aggregated count matrix.
     \item \code{donorWeights}: the per-sample \code{sqrt(n_cells)}
       weights.
-    \item \code{params}: the analysis parameters including
-      \code{is_paired} which indicates whether a paired design was
-      detected.
+    \item \code{params}: the analysis parameters.
   }
 }
 \description{

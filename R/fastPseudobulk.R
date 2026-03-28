@@ -91,7 +91,6 @@
 #' @seealso \code{\link{filterSparseDonors}}, \code{\link{fastDE}}
 #'
 #' @importFrom SummarizedExperiment assay colData
-#' @importFrom Matrix sparseMatrix rowSums
 #' @importFrom methods is
 #' @importFrom stats setNames
 #' @export
