@@ -29,10 +29,22 @@ jobs:
 
       - name: Install R dependencies
         run: |
-          options(repos = BiocManager::repositories())
-          install.packages('remotes')
-          remotes::install_deps(dependencies = TRUE, Ncpus = 2L)
-          BiocManager::install('BiocCheck', update = FALSE)
+          # Ensure CRAN + Bioc repos are both set
+          options(repos = c(
+            CRAN = "https://cloud.r-project.org",
+            BiocManager::repositories()
+          ))
+          cat("Repos:\n")
+          print(getOption("repos"))
+
+          # Install all Imports + Suggests via BiocManager
+          deps <- remotes::dev_package_deps(dependencies = TRUE)
+          pkgs <- deps$package[!deps$is_base]
+          BiocManager::install(pkgs, update = FALSE, ask = FALSE,
+                               Ncpus = 2L)
+
+          # Install BiocCheck
+          BiocManager::install("BiocCheck", update = FALSE, ask = FALSE)
         shell: Rscript {0}
 
       - name: Build package
