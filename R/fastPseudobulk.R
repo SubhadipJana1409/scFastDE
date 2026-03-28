@@ -163,7 +163,7 @@ fastPseudobulk <- function(sce,
     sample_idx <- match(sample_ids, sample_lvls)
 
     # Sparse indicator matrix (cells x samples)
-    indicator <- sparseMatrix(
+    indicator <- Matrix::sparseMatrix(
         i = seq_along(sample_idx),
         j = sample_idx,
         x = 1,
