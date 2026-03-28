@@ -19,33 +19,37 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Query dependencies
-        run: |
-          install.packages('remotes')
-          saveRDS(remotes::dev_package_deps(dependencies = TRUE),
-                  ".github/depends.Rds", version = 2)
-          writeLines(sprintf("R-%i.%i",
-                             getRversion()$major,
-                             getRversion()$minor),
-                     ".github/R-version")
-        shell: Rscript {0}
-
-      - name: Cache R packages
-        uses: actions/cache@v3
-        with:
-          path: /usr/local/lib/R/host-site-library
-          key: ${{ runner.os }}-${{ hashFiles('.github/R-version') }}-1-${{ hashFiles('.github/depends.Rds') }}
-          restore-keys: ${{ runner.os }}-${{ hashFiles('.github/R-version') }}-1-
-
       - name: Install dependencies
         run: |
-          remotes::install_deps(dependencies = TRUE,
-                                repos = BiocManager::repositories(),
-                                Ncpus = 2L)
+          # Use BiocManager which auto-detects container binaries
+          repos <- BiocManager::repositories()
+          cat("Repositories:\n")
+          print(repos)
+
+          # Install all deps using pre-built binaries where available
+          install.packages("remotes", repos = repos)
+          remotes::install_deps(
+              dependencies = TRUE,
+              repos        = repos,
+              type         = "binary",
+              Ncpus        = 2L
+          )
+
+          # BiocCheck
+          BiocManager::install("BiocCheck", update = FALSE, ask = FALSE)
         shell: Rscript {0}
 
-      - name: Install BiocCheck
-        run: BiocManager::install("BiocCheck")
+      - name: Verify key dependencies
+        run: |
+          cat("Library paths:\n")
+          print(.libPaths())
+          pkgs <- c("ggplot2", "rlang", "limma", "Matrix", "BiocCheck")
+          for (p in pkgs) {
+            ok <- requireNamespace(p, quietly = TRUE)
+            cat(sprintf("  %-12s %s\n", p, if (ok) "OK" else "MISSING"))
+          }
+          stopifnot(all(vapply(pkgs, requireNamespace,
+                               logical(1), quietly = TRUE)))
         shell: Rscript {0}
 
       - name: Build package
@@ -67,4 +71,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: check-results
-          path: check
+          path: |
+            *.Rcheck
