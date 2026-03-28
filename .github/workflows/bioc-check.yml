@@ -40,11 +40,8 @@ jobs:
           # Install remotes first
           install.packages("remotes", repos = "https://cloud.r-project.org")
 
-          # Install all Imports + Suggests via BiocManager
-          deps <- remotes::dev_package_deps(dependencies = TRUE)
-          pkgs <- deps$package[!deps$is_base]
-          BiocManager::install(pkgs, update = FALSE, ask = FALSE,
-                               Ncpus = 2L)
+          # Install all Imports + Suggests
+          remotes::install_deps(dependencies = TRUE, Ncpus = 2L)
 
           # Install BiocCheck
           BiocManager::install("BiocCheck", update = FALSE, ask = FALSE)
