@@ -30,7 +30,7 @@ jobs:
 
       - name: Install rlang and ggplot2 binaries
         run: |
-          install.packages(c("rlang", "ggplot2"), type = "binary")
+          install.packages(c("rlang", "ggplot2"))
         shell: Rscript {0}
 
       - name: Install dependencies
