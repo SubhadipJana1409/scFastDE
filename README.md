@@ -127,7 +127,7 @@ donorWeights(result)  # numeric: sqrt(n_cells) weight per sample
 
 ## Citation
 
-> Subhadip Jana (2025). scFastDE: Fast Donor-Weighted Pseudo-Bulk
+> Jana S (2026). scFastDE: Fast Donor-Weighted Pseudo-Bulk
 > Differential Expression for Single-Cell RNA-seq.
 > R package version 0.99.0.
 > https://github.com/SubhadipJana1409/scFastDE
