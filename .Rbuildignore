@@ -7,3 +7,6 @@
 ^README\.md$
 ^test_real_data\.R$
 ^test_with_dataset\.R$
+^\.Rproj\.user$
+^\.positai$
+^\.claude$

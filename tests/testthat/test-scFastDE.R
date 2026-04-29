@@ -1,4 +1,3 @@
-library(testthat)
 library(SingleCellExperiment)
 library(scFastDE)
 
@@ -26,7 +25,7 @@ test_that("filterSparseDonors returns a SingleCellExperiment", {
     sce <- make_sce()
     res <- filterSparseDonors(sce, donor = "donor",
                                cell_type = "cell_type", min_cells = 5)
-    expect_s4_class(res, "SingleCellExperiment")
+    testthat::expect_s4_class(res, "SingleCellExperiment")
 })
 
 test_that("filterSparseDonors removes donors below threshold", {
@@ -34,7 +33,7 @@ test_that("filterSparseDonors removes donors below threshold", {
     # All donors have 10 cells; require 15 to force removal
     res <- filterSparseDonors(sce, donor = "donor",
                                cell_type = "cell_type", min_cells = 15)
-    expect_lt(ncol(res), ncol(sce))
+    testthat::expect_lt(ncol(res), ncol(sce))
 })
 
 test_that("filterSparseDonors with action='flag' adds colData column", {
@@ -42,13 +41,13 @@ test_that("filterSparseDonors with action='flag' adds colData column", {
     res <- filterSparseDonors(sce, donor = "donor",
                                cell_type = "cell_type",
                                min_cells = 15, action = "flag")
-    expect_true("scFastDE_sparse" %in% names(colData(res)))
-    expect_type(res$scFastDE_sparse, "logical")
+    testthat::expect_true("scFastDE_sparse" %in% names(colData(res)))
+    testthat::expect_type(res$scFastDE_sparse, "logical")
 })
 
 test_that("filterSparseDonors errors on bad column name", {
     sce <- make_sce()
-    expect_error(
+    testthat::expect_error(
         filterSparseDonors(sce, donor = "nonexistent",
                             cell_type = "cell_type"),
         regexp = "not found in colData"
@@ -59,7 +58,7 @@ test_that("filterSparseDonors returns unchanged SCE when no sparse donors", {
     sce <- make_sce()
     res <- filterSparseDonors(sce, donor = "donor",
                                cell_type = "cell_type", min_cells = 1)
-    expect_equal(ncol(res), ncol(sce))
+    testthat::expect_equal(ncol(res), ncol(sce))
 })
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -70,8 +69,8 @@ test_that("fastPseudobulk returns a list with correct elements", {
     sce <- make_sce()
     pb <- fastPseudobulk(sce, donor = "donor",
                           cell_type = "cell_type", target_type = "Tcell")
-    expect_type(pb, "list")
-    expect_true(all(c("pseudobulk", "donor_weights",
+    testthat::expect_type(pb, "list")
+    testthat::expect_true(all(c("pseudobulk", "donor_weights",
                        "donor_ncells") %in% names(pb)))
 })
 
@@ -79,8 +78,8 @@ test_that("fastPseudobulk pseudobulk has correct dimensions", {
     sce <- make_sce()
     pb <- fastPseudobulk(sce, donor = "donor",
                           cell_type = "cell_type", target_type = "Tcell")
-    expect_equal(nrow(pb$pseudobulk), nrow(sce))
-    expect_equal(ncol(pb$pseudobulk), length(unique(sce$donor)))
+    testthat::expect_equal(nrow(pb$pseudobulk), nrow(sce))
+    testthat::expect_equal(ncol(pb$pseudobulk), length(unique(sce$donor)))
 })
 
 test_that("fastPseudobulk donor_weights are sqrt of cell counts", {
@@ -88,12 +87,12 @@ test_that("fastPseudobulk donor_weights are sqrt of cell counts", {
     pb <- fastPseudobulk(sce, donor = "donor",
                           cell_type = "cell_type", target_type = "Tcell")
     expected <- sqrt(pb$donor_ncells)
-    expect_equal(pb$donor_weights, expected)
+    testthat::expect_equal(pb$donor_weights, expected)
 })
 
 test_that("fastPseudobulk errors on invalid target_type", {
     sce <- make_sce()
-    expect_error(
+    testthat::expect_error(
         fastPseudobulk(sce, donor = "donor",
                         cell_type = "cell_type", target_type = "NK"),
         regexp = "not found"
@@ -103,7 +102,7 @@ test_that("fastPseudobulk errors on invalid target_type", {
 test_that("fastPseudobulk errors when fewer than 2 donors", {
     sce <- make_sce()
     sce_1d <- sce[, sce$donor == "D1"]
-    expect_error(
+    testthat::expect_error(
         fastPseudobulk(sce_1d, donor = "donor",
                         cell_type = "cell_type", target_type = "Tcell"),
         regexp = "At least 2"
@@ -119,7 +118,7 @@ test_that("fastDE returns a FDEResult", {
     res <- fastDE(sce, donor = "donor", cell_type = "cell_type",
                   condition = "condition", target_type = "Tcell",
                   min_cells = 5)
-    expect_s4_class(res, "FDEResult")
+    testthat::expect_s4_class(res, "FDEResult")
 })
 
 test_that("fastDE deTable has expected columns", {
@@ -127,7 +126,7 @@ test_that("fastDE deTable has expected columns", {
     res <- fastDE(sce, donor = "donor", cell_type = "cell_type",
                   condition = "condition", target_type = "Tcell",
                   min_cells = 5)
-    expect_true(all(c("logFC", "P.Value", "adj.P.Val") %in%
+    testthat::expect_true(all(c("logFC", "P.Value", "adj.P.Val") %in%
                     names(deTable(res))))
 })
 
@@ -140,11 +139,11 @@ test_that("fastDE detects injected DE signal", {
     sig_genes <- rownames(dt)[dt$adj.P.Val < 0.05]
     # At least some of the first 10 injected genes should be detected
     detected <- intersect(sig_genes, paste0("Gene", 1:10))
-    expect_gt(length(detected), 0)
+    testthat::expect_gt(length(detected), 0)
 })
 
 test_that("fastDE errors on non-SCE input", {
-    expect_error(
+    testthat::expect_error(
         fastDE(list(), donor = "donor", cell_type = "cell_type",
                condition = "condition", target_type = "Tcell"),
         regexp = "SingleCellExperiment"
@@ -154,7 +153,7 @@ test_that("fastDE errors on non-SCE input", {
 test_that("fastDE errors when condition has more than 2 levels", {
     sce <- make_sce()
     sce$condition <- rep(c("a", "b", "c"), length.out = ncol(sce))
-    expect_error(
+    testthat::expect_error(
         fastDE(sce, donor = "donor", cell_type = "cell_type",
                condition = "condition", target_type = "Tcell",
                min_cells = 1),
@@ -172,11 +171,11 @@ test_that("plotDEResults returns a ggplot object", {
                   condition = "condition", target_type = "Tcell",
                   min_cells = 5)
     p <- plotDEResults(res)
-    expect_s3_class(p, "ggplot")
+    testthat::expect_s3_class(p, "ggplot")
 })
 
 test_that("plotDEResults errors on non-FDEResult input", {
-    expect_error(plotDEResults(list()), regexp = "FDEResult")
+    testthat::expect_error(plotDEResults(list()), regexp = "FDEResult")
 })
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -203,10 +202,10 @@ test_that("FDEResult constructor and accessors work", {
                      donorWeights = wts,
                      params = list(cell_type = "Tcell"))
 
-    expect_s4_class(obj, "FDEResult")
-    expect_equal(nrow(deTable(obj)), 2)
-    expect_equal(dim(pseudobulk(obj)), c(2, 10))
-    expect_length(donorWeights(obj), 10)
+    testthat::expect_s4_class(obj, "FDEResult")
+    testthat::expect_equal(nrow(deTable(obj)), 2)
+    testthat::expect_equal(dim(pseudobulk(obj)), c(2, 10))
+    testthat::expect_length(donorWeights(obj), 10)
 })
 
 test_that("show method for FDEResult prints without error", {
@@ -219,7 +218,7 @@ test_that("show method for FDEResult prints without error", {
     rownames(pb) <- "G1"
     colnames(pb) <- paste0("D", 1:10)
     obj <- FDEResult(de, pb, setNames(sqrt(1:10), paste0("D", 1:10)))
-    expect_output(show(obj), "FDEResult")
+    testthat::expect_output(show(obj), "FDEResult")
 })
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -257,10 +256,10 @@ test_that("fastPseudobulk with condition creates donor x cond samples", {
                           target_type = "Tcell",
                           condition = "condition")
     # 6 donors x 2 conditions = 12 samples
-    expect_equal(ncol(pb$pseudobulk), 12)
-    expect_true("sample_info" %in% names(pb))
-    expect_equal(nrow(pb$sample_info), 12)
-    expect_true(all(c("donor", "condition") %in% names(pb$sample_info)))
+    testthat::expect_equal(ncol(pb$pseudobulk), 12)
+    testthat::expect_true("sample_info" %in% names(pb))
+    testthat::expect_equal(nrow(pb$sample_info), 12)
+    testthat::expect_true(all(c("donor", "condition") %in% names(pb$sample_info)))
 })
 
 test_that("fastDE detects paired design automatically", {
@@ -268,10 +267,10 @@ test_that("fastDE detects paired design automatically", {
     res <- fastDE(sce, donor = "donor", cell_type = "cell_type",
                   condition = "condition", target_type = "Tcell",
                   min_cells = 5)
-    expect_s4_class(res, "FDEResult")
-    expect_true(res@params$is_paired)
+    testthat::expect_s4_class(res, "FDEResult")
+    testthat::expect_true(res@params$is_paired)
     # Should produce 12 samples (6 donors x 2 conditions)
-    expect_equal(ncol(pseudobulk(res)), 12)
+    testthat::expect_equal(ncol(pseudobulk(res)), 12)
 })
 
 test_that("fastDE detects injected DE signal in paired design", {
@@ -283,7 +282,7 @@ test_that("fastDE detects injected DE signal in paired design", {
     sig_genes <- rownames(dt)[dt$adj.P.Val < 0.05]
     # At least some of the 15 injected DE genes should be detected
     detected <- intersect(sig_genes, paste0("Gene", 1:15))
-    expect_gt(length(detected), 0)
+    testthat::expect_gt(length(detected), 0)
 })
 
 test_that("unpaired design still works after paired fix", {
@@ -291,11 +290,11 @@ test_that("unpaired design still works after paired fix", {
     res <- fastDE(sce, donor = "donor", cell_type = "cell_type",
                   condition = "condition", target_type = "Tcell",
                   min_cells = 5)
-    expect_s4_class(res, "FDEResult")
-    expect_false(res@params$is_paired)
+    testthat::expect_s4_class(res, "FDEResult")
+    testthat::expect_false(res@params$is_paired)
     dt <- as.data.frame(deTable(res))
     sig_genes <- rownames(dt)[dt$adj.P.Val < 0.05]
     detected <- intersect(sig_genes, paste0("Gene", 1:10))
-    expect_gt(length(detected), 0)
+    testthat::expect_gt(length(detected), 0)
 })
 

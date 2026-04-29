@@ -1,4 +1,1 @@
-library(testthat)
-library(scFastDE)
-
-test_check("scFastDE")
+testthat::test_check("scFastDE")

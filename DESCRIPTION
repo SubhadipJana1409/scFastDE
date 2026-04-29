@@ -23,7 +23,7 @@ License: MIT + file LICENSE
 URL: https://github.com/SubhadipJana1409/scFastDE
 BugReports: https://github.com/SubhadipJana1409/scFastDE/issues
 biocViews: SingleCell, DifferentialExpression, StatisticalMethod,
-           Transcriptomics, GeneExpression, Sequencing,
+           Transcriptomics, GeneExpression, Sequencing, ATACSeq
            CellBasedAssays, WorkflowStep
 Encoding: UTF-8
 Depends:

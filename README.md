@@ -23,6 +23,10 @@ problems that scFastDE addresses:
   scFastDE auto-detects paired designs and aggregates per donor × condition,
   then uses a `~ 0 + condition + donor` blocking model
 
+<p align="center">
+  <img src="de_gap_diagram.svg" alt="Current tools vs scFastDE — the solution" width="680">
+</p>
+
 ## Key features
 
 - **Auto-detect paired vs unpaired** — no user configuration needed; scFastDE
