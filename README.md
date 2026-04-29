@@ -24,7 +24,7 @@ problems that scFastDE addresses:
   then uses a `~ 0 + condition + donor` blocking model
 
 <p align="center">
-  <img src="de_gap_diagram.svg" alt="Current tools vs scFastDE — the solution" width="680">
+  <img src="figures/de_gap_diagram.svg" alt="Current tools vs scFastDE — the solution" width="680">
 </p>
 
 ## Key features

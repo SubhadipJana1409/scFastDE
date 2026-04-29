@@ -11,3 +11,4 @@
 ^\.positai$
 ^\.claude$
 ^test_real_data\.R$
+^figures$
