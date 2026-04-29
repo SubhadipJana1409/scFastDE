@@ -4,3 +4,6 @@
 .Ruserdata
 .positai
 *.Rproj
+test_real_data.R
+scFastDE.BiocCheck/
+.claude/
