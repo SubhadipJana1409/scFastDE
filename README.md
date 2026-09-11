@@ -3,6 +3,7 @@
 [![Bioconductor devel](https://img.shields.io/badge/Bioconductor-devel-blue)](https://bioconductor.org/packages/devel/bioc/html/scFastDE.html)
 [![R CMD check](https://github.com/SubhadipJana1409/scFastDE/actions/workflows/bioc-check.yml/badge.svg)](https://github.com/SubhadipJana1409/scFastDE/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![GitHub Sponsors](https://img.shields.io/badge/sponsor-GitHub-pink.svg)](https://github.com/sponsors/SubhadipJana1409)
 
 ## Overview
 
@@ -135,6 +136,12 @@ donorWeights(result)  # numeric: sqrt(n_cells) weight per sample
 > Differential Expression for Single-Cell RNA-seq.
 > R package version 0.99.0.
 > https://github.com/SubhadipJana1409/scFastDE
+
+## Supporting this work
+
+If `scFastDE` helps your research, please consider
+[sponsoring @SubhadipJana1409](https://github.com/sponsors/SubhadipJana1409)
+to support maintenance and new features.
 
 ## License
 
