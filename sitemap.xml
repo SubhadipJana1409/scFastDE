@@ -1,0 +1,25 @@
+<urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
+<url><loc>/404.html</loc></url>
+<url><loc>/LICENSE-text.html</loc></url>
+<url><loc>/LICENSE.html</loc></url>
+<url><loc>/REVIEW_RESPONSE.html</loc></url>
+<url><loc>/articles/index.html</loc></url>
+<url><loc>/articles/scFastDE_workflow.html</loc></url>
+<url><loc>/authors.html</loc></url>
+<url><loc>/index.html</loc></url>
+<url><loc>/news/index.html</loc></url>
+<url><loc>/reference/FDEResult-class.html</loc></url>
+<url><loc>/reference/FDEResult.html</loc></url>
+<url><loc>/reference/deTable.html</loc></url>
+<url><loc>/reference/donorWeights.html</loc></url>
+<url><loc>/reference/fastDE.html</loc></url>
+<url><loc>/reference/fastPseudobulk.html</loc></url>
+<url><loc>/reference/filterSparseDonors.html</loc></url>
+<url><loc>/reference/index.html</loc></url>
+<url><loc>/reference/params-FDEResult-method.html</loc></url>
+<url><loc>/reference/plotDEResults.html</loc></url>
+<url><loc>/reference/pseudobulk.html</loc></url>
+<url><loc>/reference/scFastDE-package.html</loc></url>
+<url><loc>/reference/show-FDEResult-method.html</loc></url>
+</urlset>
+
